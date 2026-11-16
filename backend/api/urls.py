@@ -25,6 +25,7 @@ enrutador.register('pagos', views.PagoViewSet, basename='pago')
 enrutador.register('categorias-menu', views.CategoriaMenuViewSet, basename='categoriamenu')
 enrutador.register('menu', views.ProductoMenuViewSet, basename='productomenu')
 enrutador.register('libros', views.LibroViewSet, basename='libro')
+enrutador.register('contacto', views.MensajeViewSet, basename='mensaje')
 
 urlpatterns = [
     path('', views.raiz_api, name='raiz'),

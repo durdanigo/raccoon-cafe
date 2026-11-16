@@ -14,9 +14,14 @@ from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+
+from api.permissions import EsAdministrador, EsAdministradorOSoloLectura
 
 from api.serializers import (
     CategoriaMenuSerializer,
@@ -24,6 +29,8 @@ from api.serializers import (
     EspacioSerializer,
     LibroSerializer,
     LoginSerializer,
+    MensajeAdminSerializer,
+    MensajePublicoSerializer,
     PagoSerializer,
     ProductoMenuSerializer,
     ReservaSerializer,
@@ -32,6 +39,7 @@ from api.serializers import (
 )
 from cafeteria.models import CategoriaMenu, ProductoMenu
 from clientes.models import Cliente
+from contacto.models import Mensaje
 from cuentas.mixins import es_administrador
 from espacios.models import Espacio, Servicio, TipoEspacio
 from libreria.models import Libro
@@ -118,11 +126,17 @@ class CategoriaMenuViewSet(viewsets.ReadOnlyModelViewSet):
         return registros
 
 
-class ProductoMenuViewSet(viewsets.ReadOnlyModelViewSet):
-    """Productos de la carta. Filtros: ?categoria=<id>&disponible=true|false"""
+class ProductoMenuViewSet(viewsets.ModelViewSet):
+    """Productos de la carta. Filtros: ?categoria=<id>&disponible=true|false
+
+    Cualquiera puede consultarlos; crear, editar o borrar exige el token
+    de un administrador (cabecera `Authorization: Token <token>`).
+    """
 
     serializer_class = ProductoMenuSerializer
-    permission_classes = [AllowAny]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [EsAdministradorOSoloLectura]
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
         registros = ProductoMenu.objects.select_related('categoria')
@@ -138,11 +152,16 @@ class ProductoMenuViewSet(viewsets.ReadOnlyModelViewSet):
         return registros
 
 
-class LibroViewSet(viewsets.ReadOnlyModelViewSet):
-    """Libros. Filtros: ?tipo=venta|lectura&disponible=true|false"""
+class LibroViewSet(viewsets.ModelViewSet):
+    """Libros. Filtros: ?tipo=venta|lectura&disponible=true|false
+
+    Lectura publica; escritura solo para administradores con token.
+    """
 
     serializer_class = LibroSerializer
-    permission_classes = [AllowAny]
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [EsAdministradorOSoloLectura]
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
         registros = Libro.objects.all()
@@ -156,6 +175,61 @@ class LibroViewSet(viewsets.ReadOnlyModelViewSet):
             registros = registros.filter(disponible=disponible)
 
         return registros
+
+
+# ============================================================
+# CONTACTO
+# ============================================================
+class MensajeViewSet(viewsets.ModelViewSet):
+    """Mensajes del formulario de contacto.
+
+    - POST  /api/contacto/      publico, con limite de envios por IP.
+    - GET / PATCH / DELETE      solo administradores (token).
+    """
+
+    queryset = Mensaje.objects.all()
+    authentication_classes = [TokenAuthentication]
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+    throttle_scope = 'contacto'
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [AllowAny()]
+        return [EsAdministrador()]
+
+    def get_throttles(self):
+        # El limite solo protege el envio publico, no el panel de admin.
+        if self.action == 'create':
+            return [ScopedRateThrottle()]
+        return []
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return MensajePublicoSerializer
+        return MensajeAdminSerializer
+
+    def get_queryset(self):
+        registros = Mensaje.objects.all()
+        leido = _como_booleano(self.request.query_params.get('leido'))
+        if leido is not None:
+            registros = registros.filter(leido=leido)
+        return registros
+
+    def create(self, request, *args, **kwargs):
+        serializador = self.get_serializer(data=request.data)
+        serializador.is_valid(raise_exception=True)
+
+        # Honeypot: un bot llena el campo oculto; respondemos igual de
+        # amable para no darle pistas, pero no guardamos nada.
+        if serializador.validated_data.get('website'):
+            return Response({'detalle': 'Mensaje recibido.'}, status=status.HTTP_201_CREATED)
+
+        serializador.validated_data.pop('website', None)
+        serializador.save()
+        return Response(
+            {'detalle': 'Mensaje recibido. Te responderemos pronto.'},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 # ============================================================
@@ -328,6 +402,8 @@ class LoginAPIView(APIView):
 
         usuario = serializador.validated_data['usuario_autenticado']
         perfil = getattr(usuario, 'cliente_asociado', None)
+        # Token para las llamadas autenticadas del panel web de administracion.
+        token, _ = Token.objects.get_or_create(user=usuario)
 
         return Response({
             'autenticado': True,
@@ -337,6 +413,7 @@ class LoginAPIView(APIView):
             'correo': usuario.email,
             'rol': 'Administrador' if es_administrador(usuario) else 'Cliente',
             'id_cliente': perfil.pk if perfil else None,
+            'token': token.key,
         })
 
 
@@ -356,6 +433,7 @@ def raiz_api(request):
             'categorias_menu': base + 'categorias-menu/',
             'menu': base + 'menu/',
             'libros': base + 'libros/',
+            'contacto': base + 'contacto/',
             'tipos_espacio': base + 'tipos-espacio/',
             'espacios': base + 'espacios/',
             'servicios': base + 'servicios/',
