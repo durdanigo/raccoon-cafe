@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
 
     # --- Framework de interfaz (Tailwind CSS) ---
@@ -91,6 +92,7 @@ INSTALLED_APPS = [
     'pagos',
     'cafeteria',
     'libreria',
+    'contacto',
     'panel',
     'api',
 ]
@@ -242,13 +244,18 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ],
     'DATETIME_FORMAT': '%Y-%m-%d %H:%M',
+    # Limite de envios del formulario de contacto (por IP) contra spam.
+    'DEFAULT_THROTTLE_RATES': {
+        'contacto': '5/hour',
+    },
 }
 
 
 # ============================================================
 # CORS - acceso a la API desde otros dominios
 # ============================================================
-# La API es de consulta publica: se permite el acceso desde
-# cualquier origen, unicamente con metodos de lectura.
+# La lectura es publica y se permite desde cualquier origen. PATCH y
+# DELETE los usa el panel de administracion, pero cada uno exige el
+# token de un administrador (ver api/permissions.py).
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_METHODS = ['GET', 'POST', 'OPTIONS']
+CORS_ALLOW_METHODS = ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS']
