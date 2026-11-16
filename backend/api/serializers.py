@@ -12,6 +12,7 @@ from rest_framework import serializers
 
 from cafeteria.models import CategoriaMenu, ProductoMenu
 from clientes.models import Cliente
+from contacto.models import Mensaje
 from espacios.models import Espacio, Servicio, TipoEspacio
 from libreria.models import Libro
 from pagos.models import Pago
@@ -63,6 +64,41 @@ class ServicioSerializer(serializers.ModelSerializer):
 # ============================================================
 # CAFETERIA Y LIBRERIA
 # ============================================================
+class ValidaConCleanMixin:
+    """Aplica Model.clean() a los datos recibidos por la API.
+
+    DRF no invoca clean() por su cuenta, y las reglas de negocio de
+    ProductoMenu y Libro viven ahi. Asi la API rechaza los mismos casos
+    que el sistema web y normaliza los campos que clean() corrige
+    (por ejemplo, el precio 0 de un libro de lectura).
+    """
+
+    # Campos que clean() puede reescribir y que deben persistirse.
+    campos_normalizados = ()
+
+    def validate(self, datos):
+        from copy import copy
+
+        from django.core.exceptions import ValidationError as ErrorDeModelo
+
+        modelo = self.Meta.model
+        if self.instance:
+            instancia = copy(self.instance)
+            for campo, valor in datos.items():
+                setattr(instancia, campo, valor)
+        else:
+            instancia = modelo(**datos)
+
+        try:
+            instancia.clean()
+        except ErrorDeModelo as error:
+            raise serializers.ValidationError(error.message_dict)
+
+        for campo in self.campos_normalizados:
+            datos[campo] = getattr(instancia, campo)
+        return datos
+
+
 class CategoriaMenuSerializer(serializers.ModelSerializer):
     total_productos = serializers.IntegerField(source='productos.count', read_only=True)
 
@@ -71,7 +107,8 @@ class CategoriaMenuSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'descripcion', 'orden', 'activa', 'total_productos']
 
 
-class ProductoMenuSerializer(serializers.ModelSerializer):
+class ProductoMenuSerializer(ValidaConCleanMixin, serializers.ModelSerializer):
+    campos_normalizados = ('stock',)
     categoria_nombre = serializers.CharField(source='categoria.nombre', read_only=True)
     bajo_stock = serializers.BooleanField(read_only=True)
 
@@ -92,7 +129,8 @@ class ProductoMenuSerializer(serializers.ModelSerializer):
         ]
 
 
-class LibroSerializer(serializers.ModelSerializer):
+class LibroSerializer(ValidaConCleanMixin, serializers.ModelSerializer):
+    campos_normalizados = ('precio', 'condicion')
     tipo_texto = serializers.CharField(source='get_tipo_display', read_only=True)
     condicion_texto = serializers.CharField(source='get_condicion_display', read_only=True)
     en_venta = serializers.BooleanField(read_only=True)
@@ -261,6 +299,60 @@ class PagoSerializer(serializers.ModelSerializer):
             'estado_texto',
             'referencia',
         ]
+
+
+# ============================================================
+# CONTACTO
+# ============================================================
+class MensajePublicoSerializer(serializers.ModelSerializer):
+    """Lo que envia un visitante desde el formulario de contacto.
+
+    `website` es un campo trampa (honeypot): las personas no lo ven ni lo
+    llenan, pero los bots de spam si. Si trae contenido, la vista descarta
+    el mensaje sin guardarlo.
+    """
+
+    website = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, max_length=200
+    )
+
+    class Meta:
+        model = Mensaje
+        fields = ['nombre', 'correo', 'asunto', 'mensaje', 'website']
+
+    def validate_nombre(self, valor):
+        valor = valor.strip()
+        if len(valor) < 2:
+            raise serializers.ValidationError('Escribe tu nombre.')
+        return valor
+
+    def validate_mensaje(self, valor):
+        valor = valor.strip()
+        if len(valor) < 10:
+            raise serializers.ValidationError('Cuéntanos un poco más (mínimo 10 caracteres).')
+        if len(valor) > 1500:
+            raise serializers.ValidationError('El mensaje no puede superar los 1500 caracteres.')
+        return valor
+
+
+class MensajeAdminSerializer(serializers.ModelSerializer):
+    """Vista completa para el panel de administracion; solo `leido` se edita."""
+
+    asunto_texto = serializers.CharField(source='get_asunto_display', read_only=True)
+
+    class Meta:
+        model = Mensaje
+        fields = [
+            'id',
+            'nombre',
+            'correo',
+            'asunto',
+            'asunto_texto',
+            'mensaje',
+            'leido',
+            'creado_en',
+        ]
+        read_only_fields = ['nombre', 'correo', 'asunto', 'mensaje', 'creado_en']
 
 
 # ============================================================
