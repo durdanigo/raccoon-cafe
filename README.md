@@ -1,302 +1,155 @@
-# Raccoon Café — API REST (Backend)
+# Raccoon Café
 
-API REST de **Raccoon Café**, un café-librería que combina tres líneas de negocio en un mismo espacio:
+Aplicación web full stack de **Raccoon Café**, un café-librería que combina tres líneas de negocio:
 
-1. **Alquiler de 6 salas modulares** — 2 de co-work, 2 de encuentro, 1 taller y 1 social.
+1. **Alquiler de 6 salas** — 2 Co-work, 2 Encuentro, 1 Taller y 1 Social.
 2. **Cafetería de especialidad** — bebidas calientes y frías, pastelería y packs para eventos.
-3. **Librería mixta** — libros nuevos, de segunda mano (clasificados por condición) y de lectura interna.
+3. **Librería mixta** — libros para vender y libros para leer en la cafetería.
 
-Este repositorio contiene **únicamente el backend**. El frontend cliente vive en su propio repositorio y consume esta API por HTTPS.
+API en producción: <https://dannurda.alwaysdata.net/api/>
 
 ---
 
 ## Arquitectura
 
 ```
-┌──────────────────────┐      HTTPS      ┌──────────────────────┐    mongodb+srv    ┌──────────────────┐
-│  Frontend cliente    │ ──────────────► │  API REST            │ ────────────────► │  MongoDB Atlas   │
-│  (repositorio aparte)│  fetch / JSON   │  Node.js + Express   │     Mongoose      │  (M0 Free Tier)  │
-│  GitHub Pages        │ ◄────────────── │  JWT + RBAC          │ ◄──────────────── │                  │
-└──────────────────────┘                 │  Render              │                   └──────────────────┘
-                                         └──────────────────────┘
+┌──────────────────────┐      HTTPS      ┌──────────────────────┐   PyMySQL   ┌──────────────┐
+│  Frontend            │ ──────────────► │  API REST            │ ──────────► │  MySQL       │
+│  (carpeta frontend/) │  fetch / JSON   │  Django + DRF        │             │  alwaysdata  │
+│  GitHub Pages        │ ◄────────────── │  alwaysdata (uWSGI)  │ ◄────────── │              │
+└──────────────────────┘                 └──────────────────────┘             └──────────────┘
 ```
 
 | Capa | Tecnología | Despliegue |
 |---|---|---|
-| Base de datos | MongoDB Atlas + Mongoose | MongoDB Atlas (M0) |
-| API | Node.js + Express, JWT, RBAC, bcryptjs | Render (Web Service) |
+| Base de datos | MySQL (SQLite en local) | alwaysdata |
+| Backend | Django 6 + Django REST Framework, WhiteNoise | alwaysdata |
+| Interfaz del panel | Plantillas Django + Tailwind CSS (binario standalone, sin Node) | alwaysdata |
+| Frontend público | _Pendiente_ | GitHub Pages |
 
-**Roles del sistema (RBAC):** `cliente`, `empleado`, `admin`.
+**Roles:** `Administrador` (gestiona todo) y `Cliente` (consulta y gestiona sus reservas).
 
 ---
 
 ## Estructura del repositorio
 
 ```
-raccoon-cafe-backend/
+raccoon-cafe/
 └── backend/
-    ├── src/
-    │   ├── config/
-    │   │   └── db.js            # Conexión a MongoDB Atlas
-    │   ├── models/
-    │   │   ├── User.js          # Usuarios + hash bcrypt + roles
-    │   │   ├── Room.js          # Las 6 salas físicas
-    │   │   ├── Product.js       # Cafetería y librería unificadas
-    │   │   ├── Booking.js       # Reservas, consumo y desglose
-    │   │   └── Contact.js       # Mensajes del formulario público
-    │   ├── routes/              # Routers por módulo (v2.0)
-    │   ├── seeds/
-    │   │   └── seed.js          # Poblado inicial de la base
-    │   └── server.js            # Express + CORS + /api/health
-    ├── .env.example             # Plantilla de variables (sin secretos)
-    └── package.json
+    ├── manage.py
+    ├── requirements.txt
+    ├── .env.example              # Plantilla de variables (sin secretos)
+    ├── bookspace_manager/        # Configuración del proyecto (settings, urls, wsgi)
+    ├── cuentas/                  # Login, registro, perfil y roles
+    ├── espacios/                 # Salas, tipos de espacio y servicios
+    ├── clientes/                 # Personas y empresas
+    ├── reservas/                 # Reservas + validación de horario y cruces
+    ├── pagos/                    # Pagos sobre reservas
+    ├── cafeteria/                # Menú: categorías y productos con stock opcional
+    ├── libreria/                 # Libros: para vender / para leer en la cafetería
+    ├── panel/                    # Tablero de indicadores y calendario
+    ├── api/                      # API REST (solo lectura, JSON)
+    ├── templates/                # Plantillas base y parciales
+    ├── static/                   # JavaScript propio
+    └── theme/                    # Tailwind (paleta de la marca)
 ```
 
-> Si mueves el contenido de `backend/` a la raíz del repositorio, omite el `cd backend` de los comandos siguientes y pon `Root Directory` vacío en Render.
+> **Nota:** el paquete Python se llama `bookspace_manager` por razones históricas. Renombrarlo rompe `wsgi.py`, las migraciones y la configuración del hosting; la marca visible es *Raccoon Café*.
 
 ---
 
-## Requisitos previos
+## Instalación local
 
-- **Node.js 18 o superior** y npm.
-- Una cuenta de **MongoDB Atlas** con un clúster M0 creado.
-- Git.
-
----
-
-## Instalación y ejecución local
-
-### 1. Clonar e instalar
+Requisitos: **Python 3.13** y Git.
 
 ```bash
-git clone https://github.com/<tu-usuario>/raccoon-cafe-backend.git
-cd raccoon-cafe-backend/backend
-npm install
+git clone https://github.com/durdanigo/raccoon-cafe.git
+cd raccoon-cafe/backend
+
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+cp .env.example .env              # Windows: copy .env.example .env
+python manage.py migrate
+python manage.py crear_roles
+python manage.py seed_raccoon     # menú y libros iniciales
+python manage.py createsuperuser
+
+python manage.py tailwind install
+python manage.py tailwind build
+python manage.py runserver
 ```
 
-### 2. Crear el archivo de variables
+Sin `DB_HOST` en el `.env` se usa SQLite; no hace falta MySQL para desarrollar.
 
-```bash
-# Windows
-copy .env.example .env
+### Variables de entorno
 
-# macOS / Linux
-cp .env.example .env
-```
-
-### 3. Completar las variables
-
-| Variable | Descripción | Ejemplo |
-|---|---|---|
-| `PORT` | Puerto del servidor Express. En Render la plataforma inyecta el suyo, así que allí no hace falta. | `5000` |
-| `MONGO_URI` | Cadena de conexión de MongoDB Atlas (ver abajo). | `mongodb+srv://usuario:clave@cluster0.ab1cd.mongodb.net/raccoon_cafe?retryWrites=true&w=majority` |
-| `JWT_SECRET` | Clave secreta para firmar los tokens JWT. | Cadena aleatoria larga |
-| `CLIENT_URL` | Origen del frontend autorizado por CORS. | `http://localhost:5500` o `https://<tu-usuario>.github.io` |
-
-#### Cómo obtener `MONGO_URI`
-
-1. En [cloud.mongodb.com](https://cloud.mongodb.com), abre tu clúster y pulsa **Connect**.
-2. Elige **Drivers** → Driver **Node.js**, Version **5.5 or later**.
-3. Copia la cadena que aparece:
-
-```
-mongodb+srv://miusuario:<db_password>@cluster0.ab1cd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-```
-
-4. Haz dos cambios antes de pegarla en `.env`:
-   - Sustituye `<db_password>` por la contraseña del **usuario de base de datos** (la creada en *Database Access*, no la de tu cuenta de Atlas).
-   - Inserta el nombre de la base entre el `/` y el `?`: `raccoon_cafe`.
-
-```bash
-MONGO_URI=mongodb+srv://miusuario:MiClave123@cluster0.ab1cd.mongodb.net/raccoon_cafe?retryWrites=true&w=majority
-```
-
-**Errores frecuentes**
-
-| Síntoma | Causa | Solución |
-|---|---|---|
-| El seed corre pero la base `raccoon_cafe` sigue vacía | Falta `/raccoon_cafe` en la URI; Mongoose escribe en `test` | Agrega el nombre de la base antes del `?` |
-| `Authentication failed` | La contraseña contiene `@ : / ? # [ ] %` sin codificar | Cámbiala por letras y números, o codifícala: `node -e "console.log(encodeURIComponent('TuC@ve'))"` |
-| Timeout al conectar | La IP no está autorizada | Atlas → **Network Access** → *Allow access from anywhere* (`0.0.0.0/0`) |
-| `MONGO_URI` indefinida | El `.env` está fuera de `backend/` | Debe estar junto a `package.json` |
-
-Para generar un `JWT_SECRET` seguro:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-```
-
-Para comprobar la cadena antes de arrancar el servidor:
-
-```bash
-node -e "require('dotenv').config();require('mongoose').connect(process.env.MONGO_URI).then(c=>{console.log('OK ->',c.connection.name);process.exit(0)}).catch(e=>{console.error('FALLO:',e.message);process.exit(1)})"
-```
-
-Debe imprimir `OK -> raccoon_cafe`.
-
-> `.env` está listado en `.gitignore` y **nunca** debe subirse. `.env.example` solo contiene los nombres de las variables.
-
-### 4. Poblar la base de datos
-
-```bash
-npm run seed
-```
-
-**Borra** las colecciones `salas`, `productos`, `usuarios` y `contactos` y vuelve a insertar:
-
-- Las 6 salas físicas con su aforo, equipamiento y precio por hora.
-- 16 ítems de cafetería (bebidas calientes, frías, pastelería y packs).
-- 8 libros (3 nuevos, 3 de segunda mano, 2 de lectura interna).
-- 3 usuarios de demostración, uno por rol.
-
-| Rol | Correo | Contraseña |
-|---|---|---|
-| `admin` | `admin@raccooncafe.com` | `Admin2026!` |
-| `empleado` | `empleado@raccooncafe.com` | `Empleado2026!` |
-| `cliente` | `cliente@raccooncafe.com` | `Cliente2026!` |
-
-> Credenciales de demostración. Cámbialas antes de cualquier uso real.
-
-### 5. Levantar la API
-
-```bash
-npm start        # modo normal
-npm run dev      # con recarga automática (node --watch)
-```
-
-Comprueba que responde:
-
-```bash
-curl http://localhost:5000/api/health
-```
-
-```json
-{
-  "ok": true,
-  "servicio": "Raccoon Cafe API",
-  "version": "1.0.0",
-  "baseDatos": "conectado",
-  "entorno": "development",
-  "marcaTiempo": "2026-10-23T14:20:00.000Z"
-}
-```
-
----
-
-## Scripts disponibles
-
-| Script | Acción |
+| Variable | Descripción |
 |---|---|
-| `npm start` | Levanta la API en modo normal. |
-| `npm run dev` | Levanta la API con recarga automática al guardar. |
-| `npm run seed` | Limpia y vuelve a poblar la base de datos. |
+| `DJANGO_SECRET_KEY` | Clave de firma. **Obligatoria en producción.** |
+| `DJANGO_DEBUG` | `True` solo en desarrollo. Por defecto `False`. |
+| `DJANGO_ALLOWED_HOSTS` | Hosts permitidos, separados por coma. |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Orígenes HTTPS de confianza. |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | MySQL. Si no hay `DB_HOST`, se usa SQLite. |
 
 ---
 
-## Endpoints
+## API REST
 
-### Versión 1.0 (disponibles)
+Todas las rutas son de **solo lectura** (salvo `POST` de reservas y `login`) y responden JSON.
 
-| Método | Ruta | Descripción |
+| Ruta | Descripción | Filtros |
 |---|---|---|
-| `GET` | `/api` | Índice de la API. |
-| `GET` | `/api/health` | Estado del servicio y de la conexión con MongoDB. |
+| `/api/` | Índice de recursos | — |
+| `/api/espacios/` | Salas | `?estado=`, `?tipo=`, `?q=` |
+| `/api/reservas/` | Reservas | `?estado=`, `?fecha=`, `?cliente=`, `?proximas=true` |
+| `/api/clientes/` | Clientes | `?q=` |
+| `/api/pagos/` | Pagos | `?metodo=`, `?reserva=` |
+| `/api/menu/` | Productos de cafetería | `?categoria=`, `?disponible=true\|false` |
+| `/api/categorias-menu/` | Categorías del menú | `?activa=true` |
+| `/api/libros/` | Libros | `?tipo=venta\|lectura`, `?disponible=true\|false` |
+| `/api/dashboard/` | Indicadores del tablero | — |
+| `/api/login/` | Valida credenciales (`POST`) | — |
 
-### Versión 2.0 (punto de montaje ya reservado en `src/server.js`)
+`/api/` no usa `BrowsableAPIRenderer` a propósito: con `DEBUG=False` y el manifest de WhiteNoise provoca un error 500.
 
-| Prefijo | Módulo |
+### Reglas de negocio
+
+- **Reservas:** hora de fin posterior a la de inicio, dentro del horario de atención, aforo respetado y sin cruces en la misma sala.
+- **Productos del menú:** el stock solo se controla si `controla_stock` está activo; `bajo_stock` avisa cuando se llega al mínimo.
+- **Libros `lectura`:** precio fijo en 0, sin condición y con estante obligatorio. **Libros `venta`:** precio mayor a 0.
+
+---
+
+## Comandos de gestión
+
+| Comando | Qué hace |
 |---|---|
-| `/api/auth` | Registro, login y perfil |
-| `/api/rooms` | Salas |
-| `/api/products` | Cafetería y librería |
-| `/api/bookings` | Reservas |
-| `/api/contact` | Mensajes de contacto |
+| `crear_roles` | Crea los grupos Administrador y Cliente. |
+| `seed_raccoon` | Carga el menú y los libros iniciales (idempotente). |
+| `renombrar_salas` | Actualiza las 6 salas a las de Raccoon Café. Simula por defecto; usa `--aplicar` para guardar. |
+| `cargar_demo` | Genera clientes y reservas de ejemplo para el tablero. |
 
 ---
 
-## Modelo de datos
-
-| Modelo | Colección | Notas |
-|---|---|---|
-| `User` | `usuarios` | Contraseña hasheada con bcrypt en un hook `pre('save')`; `select: false` para que no salga en las consultas. Roles: `cliente`, `empleado`, `admin`. |
-| `Room` | `salas` | Tipos: `cowork`, `encuentro`, `taller`, `social`. Aforo como rango mínimo/máximo y precio por hora. |
-| `Product` | `productos` | Unifica cafetería y librería mediante `categoria` + `subcategoria`. Valida que un libro usado declare condición y que uno de lectura interna tenga estante y precio 0. |
-| `Booking` | `reservas` | Fecha + bloque horario + asistentes + consumo. Recalcula el total en el servidor: sala + consumo + descorche ($15.00 fijo). Estados: `pendiente` → `confirmada` → `en_curso` → `finalizada`, más `cancelada` y `no_show`. |
-| `Contact` | `contactos` | Mensajes del formulario público. Estados: `nuevo` → `leido` → `respondido` → `archivado`. |
-
-### Reglas de negocio aplicadas en los esquemas
-
-- **Alimentos internos** (`tipoAlimentos: 'interno'`): el consumo de cafetería se carga en `consumo[]`, guardando una copia del nombre y del precio al momento de reservar, para que un cambio posterior de precio no altere reservas pasadas.
-- **Alimentos externos** (`tipoAlimentos: 'externo'`): se aplica la tarifa fija de descorche de **$15.00** y se rechaza cualquier línea de consumo de cafetería.
-- **Libros de segunda mano**: deben declarar su condición (`excelente`, `bueno`, `aceptable`).
-- **Libros de lectura interna**: el precio se fuerza a 0 y el estante es obligatorio.
-- **Bloque horario**: `horaFin` debe ser posterior a `horaInicio`.
-- **Totales**: siempre se recalculan en el servidor; nunca se acepta el total que envía el cliente.
-
----
-
-## Despliegue en Render
-
-1. **New → Web Service** y conecta este repositorio.
-2. **Root Directory:** `backend` *(vacío si moviste el contenido a la raíz)*
-3. **Build Command:** `npm install`
-4. **Start Command:** `npm start`
-5. En **Environment** añade `MONGO_URI`, `JWT_SECRET` y `CLIENT_URL`.
-   `PORT` no hace falta: Render lo inyecta.
-6. En MongoDB Atlas, **Network Access** debe permitir `0.0.0.0/0` para que Render pueda conectarse.
-
-Tras el despliegue, verifica:
+## Despliegue en alwaysdata
 
 ```bash
-curl https://<tu-servicio>.onrender.com/api/health
+cd ~/www/bookspace_manager
+source venv/bin/activate
+python manage.py migrate
+python manage.py tailwind build
+python manage.py collectstatic --noinput
 ```
 
-> En el plan gratuito de Render el servicio se duerme tras unos minutos sin tráfico. La primera petición después del reposo puede tardar ~30 segundos; por eso `db.js` usa un `serverSelectionTimeoutMS` de 15 s.
+Después, reinicia el sitio desde el panel de alwaysdata (*Web → Sites → Restart*). Define las variables de entorno en el mismo panel; nunca las escribas en el código.
 
 ---
 
-## CORS
+## Estado del proyecto
 
-El frontend se sirve desde otro dominio, así que el navegador exige cabeceras CORS explícitas. `src/server.js` autoriza:
-
-- El origen declarado en `CLIENT_URL`.
-- `http://localhost:5500`, `http://127.0.0.1:5500` y `http://localhost:3000` para desarrollo.
-- Cualquier subdominio `https://*.github.io`, para no tener que reconfigurar la variable al cambiar de cuenta o de repositorio.
-
-Cualquier otro origen recibe la petición rechazada sin cabecera `Access-Control-Allow-Origin`.
-
----
-
-## Seguridad
-
-- Las contraseñas se almacenan **solo como hash** (bcryptjs, 10 rondas de sal) y `toJSON()` las elimina de cualquier respuesta.
-- `.env` está en `.gitignore`; `.env.example` no contiene ningún valor real.
-- CORS restringido a una lista de orígenes conocidos.
-- El total de una reserva se calcula en el servidor.
-- Cierre ordenado de la conexión ante `SIGINT` / `SIGTERM`, que es la señal que envía Render al reiniciar el servicio.
-
----
-
-## Hoja de ruta
-
-| Versión | Alcance |
-|---|---|
-| **1.0** ✅ | Scaffolding, modelos, conexión a Atlas, seed y `GET /api/health`. |
-| 2.0 | Routers y controladores CRUD, autenticación JWT y middleware de roles. |
-| 3.0 | Flujo completo de reservas: disponibilidad, solapamiento, consumo y check-in. |
-| 4.0 | Dashboard administrativo en React. |
-
-### Decisiones pendientes antes de la v2.0
-
-- **Buffer de limpieza entre reservas** — necesario para el algoritmo de detección de solapamiento.
-- **Expiración de reservas impagas** — cuánto tiempo permanece una reserva en `pendiente` antes de liberarse.
-- **Duración del token de sesión.**
-- **Si el consumo puede modificarse con la reserva ya en curso.**
-
----
-
-## Autoría
-
-Proyecto académico desarrollado por **Silvia Milena Pazmiño Montes** — Ingeniería en Computación, ESPOL (FIEC), Guayaquil, Ecuador.
-
-Licencia MIT.
+- [x] Backend Django con API REST desplegado.
+- [x] Módulos de salas, cafetería y librería con CRUD web.
+- [ ] Frontend público (Home, catálogo, contacto, panel de admin, IA) en `frontend/`.
+- [ ] Publicación del frontend en GitHub Pages.
