@@ -1,0 +1,146 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block titulo %}Raccoon Café{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+
+  {% tailwind_css %}
+  {% block estilos %}{% endblock %}
+</head>
+<body class="min-h-screen bg-slate-100 font-sans text-slate-800 antialiased">
+
+<div class="flex min-h-screen">
+
+  <!-- ============ BARRA LATERAL ============ -->
+  <aside id="barra-lateral"
+         class="trama-plano fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-tinta-900 lg:flex">
+    <div class="flex items-center gap-3 border-b border-white/10 px-5 py-5">
+      <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-marca-600 font-display text-lg font-semibold text-white">R</div>
+      <div>
+        <p class="font-display text-base font-semibold leading-tight text-white">Raccoon Café</p>
+        <p class="text-xs tracking-wide text-slate-400">Salas, cafetería y librería</p>
+      </div>
+    </div>
+
+    <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5 text-sm">
+      <div>
+        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Panel</p>
+        <a href="{% url 'panel:dashboard' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Tablero</a>
+        <a href="{% url 'panel:calendario' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Calendario</a>
+      </div>
+
+      <div>
+        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Operacion</p>
+        <a href="{% url 'reservas:lista' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Reservas</a>
+        <a href="{% url 'pagos:lista' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Pagos</a>
+      </div>
+
+      <div>
+        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Raccoon Café</p>
+        <a href="{% url 'cafeteria:producto_lista' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Cafetería</a>
+        <a href="{% url 'libreria:libro_lista' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Librería</a>
+      </div>
+
+      <div>
+        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Catalogo</p>
+        <a href="{% url 'espacios:espacio_lista' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Espacios</a>
+        <a href="{% url 'espacios:tipo_lista' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Tipos de espacio</a>
+        <a href="{% url 'espacios:servicio_lista' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Servicios</a>
+      </div>
+
+      {% if es_administrador %}
+      <div>
+        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Personas</p>
+        <a href="{% url 'clientes:lista' %}"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Clientes</a>
+        <a href="/admin/"
+           class="block rounded-lg px-3 py-2 text-slate-300 transition hover:bg-white/5 hover:text-white">Admin de Django</a>
+      </div>
+      {% endif %}
+    </nav>
+
+    <div class="border-t border-white/10 px-5 py-4">
+      <p class="text-[11px] text-slate-500">Raccoon Café</p>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENIDO ============ -->
+  <div class="flex min-h-screen w-full flex-col lg:pl-64">
+
+    <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div class="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <div class="flex items-center gap-3">
+          <button type="button" id="boton-menu"
+                  class="rounded-lg border border-slate-200 p-2 text-slate-600 lg:hidden"
+                  aria-label="Abrir menu">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+          <div>
+            <h1 class="font-display text-lg font-semibold text-tinta-900">{% block encabezado %}Tablero{% endblock %}</h1>
+            <p class="text-xs text-slate-500">{% block subtitulo %}{% endblock %}</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          {% if user.is_authenticated %}
+            <div class="hidden text-right sm:block">
+              <p class="text-sm font-medium text-tinta-900">{{ user.get_full_name|default:user.username }}</p>
+              <p class="text-xs text-slate-500">{% if es_administrador %}Administrador{% else %}Cliente{% endif %}</p>
+            </div>
+            <a href="{% url 'cuentas:perfil' %}"
+               class="flex h-9 w-9 items-center justify-center rounded-full bg-marca-100 font-display text-sm font-semibold text-marca-700">
+              {{ user.username|slice:":1"|upper }}
+            </a>
+            <form method="post" action="{% url 'cuentas:logout' %}">
+              {% csrf_token %}
+              <button type="submit"
+                      class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:border-slate-300 hover:text-tinta-900">
+                Cerrar sesion
+              </button>
+            </form>
+          {% else %}
+            <a href="{% url 'cuentas:login' %}"
+               class="rounded-lg bg-marca-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-marca-700">Iniciar sesion</a>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 px-4 py-6 sm:px-6">
+      {% include "partials/_mensajes.html" %}
+      {% block contenido %}{% endblock %}
+    </main>
+
+    <footer class="border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-400 sm:px-6">
+      Raccoon Café &middot; Salas, cafetería y librería
+    </footer>
+  </div>
+</div>
+
+<script src="{% static 'js/bookspace.js' %}"></script>
+<script>
+  // Menu lateral en pantallas pequenas.
+  document.getElementById('boton-menu')?.addEventListener('click', function () {
+    document.getElementById('barra-lateral')?.classList.toggle('hidden');
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

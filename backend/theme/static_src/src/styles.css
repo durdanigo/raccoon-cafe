@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/**
+ * Rutas que Tailwind revisa para descubrir las clases utilizadas.
+ * Incluye todas las plantillas HTML, archivos .py y .js del proyecto.
+ */
+@source "../../../**/*.{html,py,js}";
+
+/**
+ * Tokens de marca de Raccoon Café (caramelo sobre espresso).
+ * Se declaran con @theme para que Tailwind genere utilidades propias
+ * como bg-marca-600, text-tinta-900 o font-display.
+ */
+@theme {
+  --color-marca-50: #fdf6ec;
+  --color-marca-100: #f8e8cf;
+  --color-marca-200: #efd0a0;
+  --color-marca-400: #d9a066;
+  --color-marca-500: #c17f3e;
+  --color-marca-600: #a8672c;
+  --color-marca-700: #8a5224;
+
+  --color-tinta-700: #3d2b21;
+  --color-tinta-800: #2a1d16;
+  --color-tinta-900: #1c130e;
+
+  /* Neutros cálidos: sustituyen al gris azulado por defecto (slate). */
+  --color-slate-50: #faf7f3;
+  --color-slate-100: #f3eee7;
+  --color-slate-200: #e6ddd2;
+  --color-slate-300: #d3c6b7;
+  --color-slate-400: #a99a89;
+  --color-slate-500: #7d6e5f;
+  --color-slate-600: #5f5144;
+  --color-slate-700: #473b31;
+  --color-slate-800: #30261f;
+  --color-slate-900: #1c130e;
+
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/**
+ * Trama de plano arquitectonico usada en la barra lateral:
+ * evoca los planos de distribucion de un coworking.
+ */
+.trama-plano {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* La tabla de datos se desplaza horizontalmente en pantallas pequenas. */
+.tabla-scroll {
+  overflow-x: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

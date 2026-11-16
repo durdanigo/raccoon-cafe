@@ -1,0 +1,18 @@
+{% if is_paginated %}
+  <nav class="mt-5 flex items-center justify-between text-sm" aria-label="Paginacion">
+    <p class="text-slate-500">
+      Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+      &middot; {{ page_obj.paginator.count }} registro{{ page_obj.paginator.count|pluralize }}
+    </p>
+    <div class="flex gap-2">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}"
+           class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-slate-600 transition hover:border-marca-400 hover:text-marca-700">Anterior</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}"
+           class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-slate-600 transition hover:border-marca-400 hover:text-marca-700">Siguiente</a>
+      {% endif %}
+    </div>
+  </nav>
+{% endif %}

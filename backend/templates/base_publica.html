@@ -1,0 +1,59 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block titulo %}Raccoon Café{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  {% tailwind_css %}
+</head>
+<body class="min-h-screen bg-tinta-900 font-sans text-slate-800 antialiased">
+  <div class="grid min-h-screen lg:grid-cols-2">
+
+    <!-- Panel de presentacion -->
+    <section class="trama-plano relative hidden flex-col justify-between bg-tinta-900 p-10 lg:flex">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-marca-600 font-display text-lg font-semibold text-white">R</div>
+        <span class="font-display text-lg font-semibold text-white">Raccoon Café</span>
+      </div>
+
+      <div class="max-w-md">
+        <p class="font-display text-4xl leading-tight font-semibold text-white">
+          Cada sala, cada escritorio,<br>
+          <span class="text-marca-400">una hora a la vez.</span>
+        </p>
+        <p class="mt-4 text-sm leading-relaxed text-slate-400">
+          Administra las salas, la carta de la cafetería y los libros de la
+          librería, y registra los pagos de cada reserva desde un solo lugar.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 text-slate-400">
+        <div class="border-l border-white/10 pl-3">
+          <p class="font-display text-xl text-white">07:00</p>
+          <p class="text-xs">Apertura</p>
+        </div>
+        <div class="border-l border-white/10 pl-3">
+          <p class="font-display text-xl text-white">22:00</p>
+          <p class="text-xs">Cierre</p>
+        </div>
+        <div class="border-l border-white/10 pl-3">
+          <p class="font-display text-xl text-white">7 dias</p>
+          <p class="text-xs">Atencion</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Formulario -->
+    <section class="flex items-center justify-center bg-slate-100 px-5 py-10">
+      <div class="w-full max-w-md">
+        {% include "partials/_mensajes.html" %}
+        {% block contenido %}{% endblock %}
+      </div>
+    </section>
+  </div>
+</body>
+</html>
