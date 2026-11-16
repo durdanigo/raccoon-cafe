@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block titulo %}Pagos | Raccoon Café{% endblock %}
+{% block encabezado %}Pagos{% endblock %}
+{% block subtitulo %}{% if es_administrador %}Abonos registrados sobre las reservas{% else %}Pagos de tus reservas{% endif %}{% endblock %}
+
+{% block contenido %}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <form method="get" class="flex flex-wrap gap-2">
+    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Reserva, cliente o referencia"
+           class="w-60 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-200">
+    <select name="metodo" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-200">
+      <option value="">Todos los metodos</option>
+      {% for valor, texto in metodos %}
+        <option value="{{ valor }}" {% if request.GET.metodo == valor %}selected{% endif %}>{{ texto }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 transition hover:border-marca-400 hover:text-marca-700">Filtrar</button>
+  </form>
+
+  {% if es_administrador %}
+    <a href="{% url 'pagos:crear' %}" class="rounded-lg bg-marca-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-marca-700">Registrar pago</a>
+  {% endif %}
+</div>
+
+{% if pagos %}
+<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <div class="tabla-scroll">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+        <tr>
+          <th class="px-5 py-3">Fecha</th>
+          <th class="px-5 py-3">Reserva</th>
+          {% if es_administrador %}<th class="px-5 py-3">Cliente</th>{% endif %}
+          <th class="px-5 py-3">Metodo</th>
+          <th class="px-5 py-3">Estado</th>
+          <th class="px-5 py-3 text-right">Monto</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for pago in pagos %}
+        <tr class="transition hover:bg-slate-50">
+          <td class="px-5 py-3 text-slate-600">{{ pago.fecha_pago|date:"d/m/Y H:i" }}</td>
+          <td class="px-5 py-3">
+            <a href="{% url 'reservas:detalle' pago.reserva.pk %}" class="font-mono text-xs font-semibold text-marca-700 hover:underline">{{ pago.reserva.codigo }}</a>
+          </td>
+          {% if es_administrador %}<td class="px-5 py-3 text-slate-600">{{ pago.reserva.cliente.nombre_completo }}</td>{% endif %}
+          <td class="px-5 py-3 text-slate-600">{{ pago.get_metodo_pago_display }}</td>
+          <td class="px-5 py-3">
+            <span class="rounded-full px-2.5 py-1 text-xs font-medium
+              {% if pago.estado == 'CONFIRMADO' %}bg-marca-50 text-marca-700
+              {% elif pago.estado == 'ANULADO' %}bg-rose-50 text-rose-700
+              {% else %}bg-amber-50 text-amber-700{% endif %}">{{ pago.get_estado_display }}</span>
+          </td>
+          <td class="px-5 py-3 text-right font-medium text-tinta-900">${{ pago.monto }}</td>
+          <td class="px-5 py-3 text-right whitespace-nowrap">
+            <a href="{% url 'pagos:detalle' pago.pk %}" class="text-sm text-slate-500 hover:text-marca-700">Ver</a>
+            {% if es_administrador %}
+              <a href="{% url 'pagos:editar' pago.pk %}" class="ml-3 text-sm text-slate-500 hover:text-marca-700">Editar</a>
+              <a href="{% url 'pagos:eliminar' pago.pk %}" class="ml-3 text-sm text-rose-500 hover:text-rose-700">Eliminar</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_paginacion.html" %}
+{% else %}
+  {% include "partials/_sin_datos.html" with titulo_vacio="No hay pagos registrados" texto_vacio="Los pagos aparecen aqui cuando registras un abono sobre una reserva." %}
+{% endif %}
+{% endblock %}

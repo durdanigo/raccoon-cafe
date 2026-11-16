@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block titulo %}Pago de {{ pago.reserva.codigo }}{% endblock %}
+{% block encabezado %}Pago de ${{ pago.monto }}{% endblock %}
+{% block subtitulo %}Reserva {{ pago.reserva.codigo }} &middot; {{ pago.fecha_pago|date:"d/m/Y H:i" }}{% endblock %}
+
+{% block contenido %}
+<div class="max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+  <dl class="space-y-3 text-sm">
+    <div class="flex justify-between border-b border-slate-100 pb-2">
+      <dt class="text-slate-500">Reserva</dt>
+      <dd><a href="{% url 'reservas:detalle' pago.reserva.pk %}" class="font-medium text-marca-700 hover:underline">{{ pago.reserva.codigo }}</a></dd>
+    </div>
+    <div class="flex justify-between border-b border-slate-100 pb-2">
+      <dt class="text-slate-500">Cliente</dt><dd class="font-medium text-slate-800">{{ pago.reserva.cliente.nombre_completo }}</dd>
+    </div>
+    <div class="flex justify-between border-b border-slate-100 pb-2">
+      <dt class="text-slate-500">Metodo</dt><dd class="font-medium text-slate-800">{{ pago.get_metodo_pago_display }}</dd>
+    </div>
+    <div class="flex justify-between border-b border-slate-100 pb-2">
+      <dt class="text-slate-500">Estado</dt><dd class="font-medium text-slate-800">{{ pago.get_estado_display }}</dd>
+    </div>
+    <div class="flex justify-between border-b border-slate-100 pb-2">
+      <dt class="text-slate-500">Referencia</dt><dd class="font-medium text-slate-800">{{ pago.referencia|default:"-" }}</dd>
+    </div>
+    <div class="flex justify-between">
+      <dt class="text-slate-500">Saldo de la reserva</dt><dd class="font-medium text-slate-800">${{ pago.reserva.saldo_pendiente }}</dd>
+    </div>
+  </dl>
+
+  {% if es_administrador %}
+  <div class="mt-6 flex gap-3">
+    <a href="{% url 'pagos:editar' pago.pk %}" class="rounded-lg bg-marca-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-marca-700">Editar</a>
+    <a href="{% url 'pagos:eliminar' pago.pk %}" class="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-600 transition hover:bg-rose-50">Eliminar</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

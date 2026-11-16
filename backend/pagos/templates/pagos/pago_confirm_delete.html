@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block titulo %}Eliminar pago{% endblock %}
+{% block encabezado %}Eliminar pago{% endblock %}
+{% block subtitulo %}Esta accion no se puede deshacer{% endblock %}
+
+{% block contenido %}
+<div class="max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+  <p class="text-sm text-slate-600">
+    Vas a eliminar el pago de <span class="font-semibold text-tinta-900">${{ pago.monto }}</span>
+    asociado a la reserva {{ pago.reserva.codigo }}. El saldo pendiente de la reserva se recalculara.
+  </p>
+  <form method="post" class="mt-6 flex gap-3">
+    {% csrf_token %}
+    <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700">Si, eliminar</button>
+    <a href="{% url 'pagos:lista' %}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:border-slate-300">Cancelar</a>
+  </form>
+</div>
+{% endblock %}
