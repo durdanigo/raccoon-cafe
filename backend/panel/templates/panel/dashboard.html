@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block titulo %}Tablero | Raccoon Café{% endblock %}
+{% block encabezado %}Tablero{% endblock %}
+{% block subtitulo %}{% if es_administrador %}Estado general de la operacion{% else %}Resumen de tu actividad{% endif %}{% endblock %}
+
+{% block contenido %}
+
+<!-- ============ INDICADORES ============ -->
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Reservas de hoy</p>
+    <p class="mt-2 font-display text-3xl font-semibold text-tinta-900">{{ reservas_hoy }}</p>
+    <p class="mt-1 text-xs text-slate-500">{{ reservas_mes }} en lo que va del mes</p>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Ingresos del mes</p>
+    <p class="mt-2 font-display text-3xl font-semibold text-marca-700">${{ ingresos_mes }}</p>
+    <p class="mt-1 text-xs text-slate-500">Pagos confirmados</p>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Reservas pendientes</p>
+    <p class="mt-2 font-display text-3xl font-semibold text-amber-600">{{ reservas_pendientes }}</p>
+    <p class="mt-1 text-xs text-slate-500">Esperan pago o confirmacion</p>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Espacios disponibles</p>
+    <p class="mt-2 font-display text-3xl font-semibold text-tinta-900">{{ espacios_disponibles }}<span class="text-lg text-slate-400">/{{ total_espacios }}</span></p>
+    <p class="mt-1 text-xs text-slate-500">{{ total_clientes }} cliente{{ total_clientes|pluralize }} activo{{ total_clientes|pluralize }}</p>
+  </div>
+</div>
+
+<!-- ============ GRAFICOS ============ -->
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+    <h2 class="font-display text-base font-semibold text-tinta-900">Reservas de los ultimos 7 dias</h2>
+    <div class="mt-4 h-64"><canvas id="grafico-dias"></canvas></div>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h2 class="font-display text-base font-semibold text-tinta-900">Reservas por estado</h2>
+    <div class="mt-4 h-64"><canvas id="grafico-estados"></canvas></div>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h2 class="font-display text-base font-semibold text-tinta-900">Espacios mas reservados</h2>
+    <div class="mt-4 h-64"><canvas id="grafico-espacios"></canvas></div>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+    <h2 class="font-display text-base font-semibold text-tinta-900">Ingresos de los ultimos 6 meses</h2>
+    <div class="mt-4 h-64"><canvas id="grafico-ingresos"></canvas></div>
+  </div>
+</div>
+
+<!-- ============ PROXIMAS RESERVAS ============ -->
+<div class="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+  <div class="flex items-center justify-between">
+    <h2 class="font-display text-base font-semibold text-tinta-900">Proximas reservas</h2>
+    <a href="{% url 'panel:calendario' %}" class="text-sm text-marca-700 hover:underline">Ver calendario</a>
+  </div>
+
+  {% if proximas_reservas %}
+    <ul class="mt-4 divide-y divide-slate-100">
+      {% for reserva in proximas_reservas %}
+        <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+          <div class="flex items-center gap-4">
+            <div class="w-14 shrink-0 rounded-lg bg-slate-50 py-2 text-center">
+              <p class="font-display text-base font-semibold text-tinta-900">{{ reserva.fecha|date:"d" }}</p>
+              <p class="text-[10px] uppercase text-slate-500">{{ reserva.fecha|date:"M" }}</p>
+            </div>
+            <div>
+              <a href="{% url 'reservas:detalle' reserva.pk %}" class="font-medium text-tinta-900 hover:text-marca-700">{{ reserva.espacio.nombre }}</a>
+              <p class="text-xs text-slate-500">
+                {{ reserva.hora_inicio|time:"H:i" }} - {{ reserva.hora_fin|time:"H:i" }}
+                {% if es_administrador %}&middot; {{ reserva.cliente.nombre_completo }}{% endif %}
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="rounded-full px-2.5 py-1 text-xs font-medium
+              {% if reserva.estado == 'CONFIRMADA' %}bg-marca-50 text-marca-700{% else %}bg-amber-50 text-amber-700{% endif %}">
+              {{ reserva.get_estado_display }}
+            </span>
+            <span class="font-display text-sm font-semibold text-tinta-900">${{ reserva.total }}</span>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mt-4 text-sm text-slate-500">No hay reservas programadas a partir de hoy.</p>
+  {% endif %}
+</div>
+
+{{ datos_graficos|json_script:"datos-graficos" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const datos = JSON.parse(document.getElementById('datos-graficos').textContent);
+
+  Chart.defaults.font.family = 'Inter, sans-serif';
+  Chart.defaults.color = '#7d6e5f';
+
+  const sinLeyenda = { plugins: { legend: { display: false } }, maintainAspectRatio: false };
+
+  // 1. Reservas por dia
+  new Chart(document.getElementById('grafico-dias'), {
+    type: 'bar',
+    data: {
+      labels: datos.dias.etiquetas,
+      datasets: [{
+        label: 'Reservas',
+        data: datos.dias.valores,
+        backgroundColor: '#a8672c',
+        borderRadius: 6,
+        maxBarThickness: 46
+      }]
+    },
+    options: {
+      ...sinLeyenda,
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+
+  // 2. Reservas por estado
+  new Chart(document.getElementById('grafico-estados'), {
+    type: 'doughnut',
+    data: {
+      labels: datos.estados.etiquetas,
+      datasets: [{ data: datos.estados.valores, backgroundColor: datos.estados.colores, borderWidth: 0 }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14 } } }
+    }
+  });
+
+  // 3. Espacios mas reservados
+  new Chart(document.getElementById('grafico-espacios'), {
+    type: 'bar',
+    data: {
+      labels: datos.espacios.etiquetas,
+      datasets: [{ label: 'Reservas', data: datos.espacios.valores, backgroundColor: '#c17f3e', borderRadius: 6 }]
+    },
+    options: {
+      ...sinLeyenda,
+      indexAxis: 'y',
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+
+  // 4. Ingresos por mes
+  new Chart(document.getElementById('grafico-ingresos'), {
+    type: 'line',
+    data: {
+      labels: datos.ingresos.etiquetas,
+      datasets: [{
+        label: 'Ingresos (USD)',
+        data: datos.ingresos.valores,
+        borderColor: '#8a5224',
+        backgroundColor: 'rgba(13, 148, 136, 0.12)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 4,
+        pointBackgroundColor: '#8a5224'
+      }]
+    },
+    options: { ...sinLeyenda, scales: { y: { beginAtZero: true } } }
+  });
+</script>
+{% endblock %}
