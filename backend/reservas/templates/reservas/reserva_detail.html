@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block titulo %}{{ reserva.codigo }} | Reservas{% endblock %}
+{% block encabezado %}Reserva {{ reserva.codigo }}{% endblock %}
+{% block subtitulo %}{{ reserva.espacio }} &middot; {{ reserva.fecha|date:"d/m/Y" }} de {{ reserva.hora_inicio|time:"H:i" }} a {{ reserva.hora_fin|time:"H:i" }}{% endblock %}
+
+{% block contenido %}
+<div class="grid gap-5 lg:grid-cols-3">
+
+  <!-- ---------- Columna principal ---------- -->
+  <div class="space-y-5 lg:col-span-2">
+
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-slate-500">Cliente</p>
+          <p class="font-display text-lg font-semibold text-tinta-900">{{ reserva.cliente.nombre_completo }}</p>
+          <p class="text-sm text-slate-500">{{ reserva.cliente.correo }} &middot; {{ reserva.cliente.telefono }}</p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium
+          {% if reserva.estado == 'CONFIRMADA' %}bg-marca-50 text-marca-700
+          {% elif reserva.estado == 'PENDIENTE' %}bg-amber-50 text-amber-700
+          {% elif reserva.estado == 'CANCELADA' %}bg-rose-50 text-rose-700
+          {% else %}bg-slate-100 text-slate-600{% endif %}">
+          {{ reserva.get_estado_display }}
+        </span>
+      </div>
+
+      <div class="mt-5 grid gap-4 sm:grid-cols-4">
+        <div class="rounded-xl bg-slate-50 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Horas</p>
+          <p class="font-display text-xl font-semibold text-tinta-900">{{ reserva.horas }}</p>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Personas</p>
+          <p class="font-display text-xl font-semibold text-tinta-900">{{ reserva.numero_personas }}</p>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Pagado</p>
+          <p class="font-display text-xl font-semibold text-marca-700">${{ reserva.total_pagado }}</p>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4">
+          <p class="text-xs uppercase tracking-wide text-slate-500">Saldo</p>
+          <p class="font-display text-xl font-semibold {% if reserva.saldo_pendiente > 0 %}text-amber-600{% else %}text-slate-400{% endif %}">${{ reserva.saldo_pendiente }}</p>
+        </div>
+      </div>
+
+      {% if reserva.observaciones %}
+        <p class="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">{{ reserva.observaciones }}</p>
+      {% endif %}
+
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="{% url 'reservas:editar' reserva.pk %}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:border-slate-300">Editar</a>
+        {% if es_administrador %}
+          {% if reserva.saldo_pendiente > 0 and reserva.estado != 'CANCELADA' %}
+            <a href="{% url 'pagos:crear' %}?reserva={{ reserva.pk }}" class="rounded-lg bg-marca-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-marca-700">Registrar pago</a>
+          {% endif %}
+          {% if reserva.estado != 'CONFIRMADA' and reserva.estado != 'CANCELADA' %}
+            <form method="post" action="{% url 'reservas:cambiar_estado' reserva.pk 'CONFIRMADA' %}">
+              {% csrf_token %}
+              <button type="submit" class="rounded-lg border border-marca-200 px-4 py-2 text-sm text-marca-700 transition hover:bg-marca-50">Confirmar</button>
+            </form>
+          {% endif %}
+          {% if reserva.estado != 'COMPLETADA' and reserva.estado != 'CANCELADA' %}
+            <form method="post" action="{% url 'reservas:cambiar_estado' reserva.pk 'COMPLETADA' %}">
+              {% csrf_token %}
+              <button type="submit" class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:border-slate-300">Marcar completada</button>
+            </form>
+          {% endif %}
+          {% if reserva.estado != 'CANCELADA' %}
+            <form method="post" action="{% url 'reservas:cambiar_estado' reserva.pk 'CANCELADA' %}"
+                  data-confirmar="Se cancelara la reserva {{ reserva.codigo }}. Deseas continuar?">
+              {% csrf_token %}
+              <button type="submit" class="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-600 transition hover:bg-rose-50">Cancelar reserva</button>
+            </form>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ---------- Servicios adicionales ---------- -->
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="font-display text-base font-semibold text-tinta-900">Servicios adicionales</h2>
+
+      {% if detalles %}
+        <div class="tabla-scroll mt-4">
+          <table class="min-w-full text-sm">
+            <thead class="text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr>
+                <th class="py-2">Servicio</th>
+                <th class="py-2 text-right">Cantidad</th>
+                <th class="py-2 text-right">P. unitario</th>
+                <th class="py-2 text-right">Subtotal</th>
+                {% if es_administrador %}<th class="py-2"></th>{% endif %}
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for detalle in detalles %}
+              <tr>
+                <td class="py-2 font-medium text-tinta-900">{{ detalle.servicio.nombre }}</td>
+                <td class="py-2 text-right text-slate-600">{{ detalle.cantidad }}</td>
+                <td class="py-2 text-right text-slate-600">${{ detalle.precio_unitario }}</td>
+                <td class="py-2 text-right font-medium text-tinta-900">${{ detalle.subtotal }}</td>
+                {% if es_administrador %}
+                <td class="py-2 text-right">
+                  <form method="post" action="{% url 'reservas:detalle_eliminar' detalle.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="text-xs text-rose-500 hover:text-rose-700">Quitar</button>
+                  </form>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="mt-3 text-sm text-slate-500">Esta reserva no incluye servicios adicionales.</p>
+      {% endif %}
+
+      {% if es_administrador and reserva.estado != 'CANCELADA' %}
+        <form method="post" action="{% url 'reservas:detalle_agregar' reserva.pk %}"
+              class="mt-5 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-5">
+          {% csrf_token %}
+          <div class="min-w-[200px] flex-1">
+            <label class="mb-1.5 block text-sm font-medium text-slate-700">Servicio</label>
+            {{ form_detalle.servicio }}
+          </div>
+          <div class="w-28">
+            <label class="mb-1.5 block text-sm font-medium text-slate-700">Cantidad</label>
+            {{ form_detalle.cantidad }}
+          </div>
+          <button type="submit" class="rounded-lg bg-tinta-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-tinta-800">Agregar</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ---------- Columna lateral ---------- -->
+  <div class="space-y-5">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="font-display text-sm font-semibold text-tinta-900">Resumen economico</h2>
+      <dl class="mt-4 space-y-2 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-slate-500">Espacio ({{ reserva.horas }} h)</dt>
+          <dd class="text-slate-700">${{ reserva.subtotal_espacio }}</dd>
+        </div>
+        <div class="flex justify-between border-b border-slate-100 pb-2">
+          <dt class="text-slate-500">Servicios</dt>
+          <dd class="text-slate-700">${{ reserva.subtotal_servicios }}</dd>
+        </div>
+        <div class="flex justify-between pt-1">
+          <dt class="font-display text-base font-semibold text-tinta-900">Total</dt>
+          <dd class="font-display text-base font-semibold text-marca-700">${{ reserva.total }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="font-display text-sm font-semibold text-tinta-900">Pagos registrados</h2>
+      <ul class="mt-3 space-y-3 text-sm">
+        {% for pago in pagos %}
+          <li class="border-b border-slate-100 pb-2 last:border-0">
+            <div class="flex justify-between">
+              <a href="{% url 'pagos:detalle' pago.pk %}" class="font-medium text-slate-700 hover:text-marca-700">${{ pago.monto }}</a>
+              <span class="text-xs text-slate-500">{{ pago.get_estado_display }}</span>
+            </div>
+            <p class="text-xs text-slate-500">{{ pago.get_metodo_pago_display }} &middot; {{ pago.fecha_pago|date:"d/m/Y H:i" }}</p>
+          </li>
+        {% empty %}
+          <li class="text-slate-500">Sin pagos registrados.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

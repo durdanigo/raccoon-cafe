@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block titulo %}Eliminar reserva{% endblock %}
+{% block encabezado %}Eliminar reserva{% endblock %}
+{% block subtitulo %}Esta accion no se puede deshacer{% endblock %}
+
+{% block contenido %}
+<div class="max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+  <p class="text-sm text-slate-600">
+    Vas a eliminar la reserva <span class="font-semibold text-tinta-900">{{ reserva.codigo }}</span>
+    del espacio {{ reserva.espacio }} para el {{ reserva.fecha|date:"d/m/Y" }}.
+    Si tiene pagos registrados, cancelala en lugar de eliminarla.
+  </p>
+  <form method="post" class="mt-6 flex gap-3">
+    {% csrf_token %}
+    <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700">Si, eliminar</button>
+    <a href="{% url 'reservas:detalle' reserva.pk %}" class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:border-slate-300">Cancelar</a>
+  </form>
+</div>
+{% endblock %}
