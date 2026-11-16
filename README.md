@@ -25,7 +25,7 @@ API en producción: <https://dannurda.alwaysdata.net/api/>
 | Base de datos | MySQL (SQLite en local) | alwaysdata |
 | Backend | Django 6 + Django REST Framework, WhiteNoise | alwaysdata |
 | Interfaz del panel | Plantillas Django + Tailwind CSS (binario standalone, sin Node) | alwaysdata |
-| Frontend público | _Pendiente_ | GitHub Pages |
+| Frontend público | React + Vite (repositorio [RaccoonCafe](https://github.com/durdanigo/RaccoonCafe)) | GitHub Pages |
 
 **Roles:** `Administrador` (gestiona todo) y `Cliente` (consulta y gestiona sus reservas).
 
@@ -47,6 +47,7 @@ raccoon-cafe/
     ├── pagos/                    # Pagos sobre reservas
     ├── cafeteria/                # Menú: categorías y productos con stock opcional
     ├── libreria/                 # Libros: para vender / para leer en la cafetería
+    ├── contacto/                 # Mensajes del formulario de contacto
     ├── panel/                    # Tablero de indicadores y calendario
     ├── api/                      # API REST (solo lectura, JSON)
     ├── templates/                # Plantillas base y parciales
@@ -97,7 +98,7 @@ Sin `DB_HOST` en el `.env` se usa SQLite; no hace falta MySQL para desarrollar.
 
 ## API REST
 
-Todas las rutas son de **solo lectura** (salvo `POST` de reservas y `login`) y responden JSON.
+La lectura es **pública**. Las escrituras tienen dos niveles: `POST` de reservas, `login` y `contacto` son abiertos; crear, editar o borrar menú, libros y mensajes exige el **token de un administrador**. Todo responde JSON.
 
 | Ruta | Descripción | Filtros |
 |---|---|---|
@@ -110,9 +111,20 @@ Todas las rutas son de **solo lectura** (salvo `POST` de reservas y `login`) y r
 | `/api/categorias-menu/` | Categorías del menú | `?activa=true` |
 | `/api/libros/` | Libros | `?tipo=venta\|lectura`, `?disponible=true\|false` |
 | `/api/dashboard/` | Indicadores del tablero | — |
-| `/api/login/` | Valida credenciales (`POST`) | — |
+| `/api/contacto/` | `POST` público (máx. 5/hora por IP). `GET`/`PATCH`/`DELETE`: solo administradores | `?leido=true|false` |
+| `/api/login/` | Valida credenciales (`POST`) y devuelve `token` | — |
 
 `/api/` no usa `BrowsableAPIRenderer` a propósito: con `DEBUG=False` y el manifest de WhiteNoise provoca un error 500.
+
+### Autenticación del panel de administración
+
+`POST /api/login/` con `{"usuario", "clave"}` devuelve, además de los datos de la persona, un `token`. Las rutas protegidas lo exigen en la cabecera:
+
+```
+Authorization: Token <token>
+```
+
+Solo los usuarios con rol Administrador pueden escribir en `/api/menu/`, `/api/libros/` y `/api/contacto/` (salvo el `POST` público de contacto). Los permisos están en `api/permissions.py`. Las mismas reglas de negocio del sistema web se validan también por API.
 
 ### Reglas de negocio
 
@@ -138,7 +150,7 @@ Todas las rutas son de **solo lectura** (salvo `POST` de reservas y `login`) y r
 ```bash
 cd ~/www/bookspace_manager
 source venv/bin/activate
-python manage.py migrate
+python manage.py migrate        # incluye contacto y authtoken
 python manage.py tailwind build
 python manage.py collectstatic --noinput
 ```
