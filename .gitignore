@@ -57,3 +57,20 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# ---------------------------------------------------------------
+# Python / Django (backend)
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.sqlite3
+db.sqlite3
+
+# Archivos estaticos generados por collectstatic y por Tailwind
+staticfiles/
+backend/theme/static/
+
+# Respaldos de datos (pueden contener informacion de clientes)
+backup_*.json
