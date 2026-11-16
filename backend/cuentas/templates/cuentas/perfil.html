@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block titulo %}Mi perfil | Raccoon Café{% endblock %}
+{% block encabezado %}Mi perfil{% endblock %}
+{% block subtitulo %}Datos de la cuenta y ultimas reservas{% endblock %}
+
+{% block contenido %}
+<div class="grid gap-5 lg:grid-cols-3">
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="flex items-center gap-4">
+      <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-marca-100 font-display text-xl font-semibold text-marca-700">
+        {{ user.username|slice:":1"|upper }}
+      </div>
+      <div>
+        <p class="font-display text-lg font-semibold text-tinta-900">{{ user.get_full_name|default:user.username }}</p>
+        <p class="text-sm text-slate-500">{% if es_administrador %}Administrador{% else %}Cliente{% endif %}</p>
+      </div>
+    </div>
+
+    <dl class="mt-6 space-y-3 text-sm">
+      <div class="flex justify-between border-b border-slate-100 pb-2">
+        <dt class="text-slate-500">Usuario</dt><dd class="font-medium text-slate-800">{{ user.username }}</dd>
+      </div>
+      <div class="flex justify-between border-b border-slate-100 pb-2">
+        <dt class="text-slate-500">Correo</dt><dd class="font-medium text-slate-800">{{ user.email|default:"-" }}</dd>
+      </div>
+      {% if cliente %}
+      <div class="flex justify-between border-b border-slate-100 pb-2">
+        <dt class="text-slate-500">Cedula</dt><dd class="font-medium text-slate-800">{{ cliente.cedula }}</dd>
+      </div>
+      <div class="flex justify-between border-b border-slate-100 pb-2">
+        <dt class="text-slate-500">Telefono</dt><dd class="font-medium text-slate-800">{{ cliente.telefono }}</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-slate-500">Tipo</dt><dd class="font-medium text-slate-800">{{ cliente.get_tipo_cliente_display }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+    <h2 class="font-display text-base font-semibold text-tinta-900">Ultimas reservas</h2>
+    {% if reservas %}
+      <ul class="mt-4 divide-y divide-slate-100">
+        {% for reserva in reservas %}
+          <li class="flex items-center justify-between py-3">
+            <div>
+              <a href="{% url 'reservas:detalle' reserva.pk %}" class="font-medium text-tinta-900 hover:text-marca-700">{{ reserva.codigo }}</a>
+              <p class="text-xs text-slate-500">{{ reserva.espacio }} &middot; {{ reserva.fecha }} {{ reserva.hora_inicio|time:"H:i" }}-{{ reserva.hora_fin|time:"H:i" }}</p>
+            </div>
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">{{ reserva.get_estado_display }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mt-4 text-sm text-slate-500">Aun no tienes reservas registradas.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
