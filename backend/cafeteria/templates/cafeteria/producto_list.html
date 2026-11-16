@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block titulo %}Cafetería | Raccoon Café{% endblock %}
+{% block encabezado %}Cafetería{% endblock %}
+{% block subtitulo %}Carta de bebidas, pastelería y packs para eventos{% endblock %}
+
+{% block contenido %}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <form method="get" class="flex flex-wrap gap-2">
+    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar producto"
+           class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-200">
+    <select name="categoria" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-200">
+      <option value="">Todas las categorías</option>
+      {% for categoria in categorias %}
+        <option value="{{ categoria.pk }}" {% if request.GET.categoria == categoria.pk|stringformat:"s" %}selected{% endif %}>{{ categoria.nombre }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 transition hover:border-marca-400 hover:text-marca-700">Filtrar</button>
+  </form>
+
+  <div class="flex gap-2">
+    <a href="{% url 'cafeteria:categoria_lista' %}" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 transition hover:border-marca-400 hover:text-marca-700">Categorías</a>
+    {% if es_administrador %}
+      <a href="{% url 'cafeteria:producto_crear' %}" class="rounded-lg bg-marca-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-marca-700">Nuevo producto</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if productos %}
+<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <div class="tabla-scroll">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+        <tr>
+          <th class="px-5 py-3">Producto</th>
+          <th class="px-5 py-3">Categoría</th>
+          <th class="px-5 py-3 text-right">Precio</th>
+          <th class="px-5 py-3 text-right">Stock</th>
+          <th class="px-5 py-3">Estado</th>
+          {% if es_administrador %}<th class="px-5 py-3 text-right">Acciones</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for producto in productos %}
+        <tr class="transition hover:bg-slate-50 {% if producto.bajo_stock %}bg-amber-50/60{% endif %}">
+          <td class="px-5 py-3">
+            <p class="font-medium text-tinta-900">{{ producto.nombre }}</p>
+            {% if producto.descripcion %}<p class="text-xs text-slate-500">{{ producto.descripcion|truncatechars:70 }}</p>{% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-600">{{ producto.categoria.nombre }}</td>
+          <td class="px-5 py-3 text-right font-medium text-tinta-900">${{ producto.precio }}</td>
+          <td class="px-5 py-3 text-right">
+            {% if producto.controla_stock %}
+              <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {% if producto.bajo_stock %}bg-amber-100 text-amber-800{% else %}bg-marca-50 text-marca-700{% endif %}">
+                {{ producto.stock }}{% if producto.bajo_stock %} · Bajo stock{% endif %}
+              </span>
+            {% else %}
+              <span class="text-xs text-slate-400">Sin control</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3">
+            <span class="rounded-full px-2.5 py-1 text-xs font-medium {% if producto.disponible %}bg-marca-50 text-marca-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+              {{ producto.disponible|yesno:"Disponible,No disponible" }}
+            </span>
+          </td>
+          {% if es_administrador %}
+          <td class="px-5 py-3 text-right whitespace-nowrap">
+            <a href="{% url 'cafeteria:producto_editar' producto.pk %}" class="text-sm text-slate-500 hover:text-marca-700">Editar</a>
+            <a href="{% url 'cafeteria:producto_eliminar' producto.pk %}" class="ml-3 text-sm text-rose-500 hover:text-rose-700">Eliminar</a>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_paginacion.html" %}
+{% else %}
+  {% include "partials/_sin_datos.html" with titulo_vacio="No hay productos registrados" texto_vacio="Crea una categoría y luego agrega el primer producto de la carta." %}
+{% endif %}
+{% endblock %}
