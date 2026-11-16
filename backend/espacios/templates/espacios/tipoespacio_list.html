@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block titulo %}Tipos de espacio | Raccoon Café{% endblock %}
+{% block encabezado %}Tipos de espacio{% endblock %}
+{% block subtitulo %}Clasificacion de las areas del coworking{% endblock %}
+
+{% block contenido %}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <form method="get" class="flex gap-2">
+    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar por nombre"
+           class="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-200">
+    <button type="submit" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 transition hover:border-marca-400 hover:text-marca-700">Buscar</button>
+  </form>
+
+  {% if es_administrador %}
+    <a href="{% url 'espacios:tipo_crear' %}" class="rounded-lg bg-marca-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-marca-700">Nuevo tipo</a>
+  {% endif %}
+</div>
+
+{% if tipos %}
+<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <div class="tabla-scroll">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+        <tr>
+          <th class="px-5 py-3">Nombre</th>
+          <th class="px-5 py-3">Descripcion</th>
+          <th class="px-5 py-3">Espacios</th>
+          <th class="px-5 py-3">Estado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for tipo in tipos %}
+        <tr class="transition hover:bg-slate-50">
+          <td class="px-5 py-3 font-medium text-tinta-900">{{ tipo.nombre }}</td>
+          <td class="px-5 py-3 text-slate-500">{{ tipo.descripcion|default:"-"|truncatechars:60 }}</td>
+          <td class="px-5 py-3 text-slate-600">{{ tipo.espacios_del_tipo.count }}</td>
+          <td class="px-5 py-3">
+            {% if tipo.activo %}
+              <span class="rounded-full bg-marca-50 px-2.5 py-1 text-xs font-medium text-marca-700">Activo</span>
+            {% else %}
+              <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">Inactivo</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3 text-right whitespace-nowrap">
+            <a href="{% url 'espacios:tipo_detalle' tipo.pk %}" class="text-sm text-slate-500 hover:text-marca-700">Ver</a>
+            {% if es_administrador %}
+              <a href="{% url 'espacios:tipo_editar' tipo.pk %}" class="ml-3 text-sm text-slate-500 hover:text-marca-700">Editar</a>
+              <a href="{% url 'espacios:tipo_eliminar' tipo.pk %}" class="ml-3 text-sm text-rose-500 hover:text-rose-700">Eliminar</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_paginacion.html" %}
+{% else %}
+  {% include "partials/_sin_datos.html" with titulo_vacio="No hay tipos de espacio" texto_vacio="Registra el primer tipo para poder crear espacios." %}
+{% endif %}
+{% endblock %}
