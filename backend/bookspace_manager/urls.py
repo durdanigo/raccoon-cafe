@@ -20,6 +20,7 @@ urlpatterns = [
     path('pagos/', include('pagos.urls')),
     path('cafeteria/', include('cafeteria.urls')),
     path('libreria/', include('libreria.urls')),
+    path('mensajes/', include('contacto.urls')),
 ]
 
 admin.site.site_header = 'Raccoon Café - Administración'
