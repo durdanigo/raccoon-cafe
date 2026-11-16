@@ -1,0 +1,31 @@
+# ============================================================
+# Raccoon Café - Dependencias del proyecto
+# ------------------------------------------------------------
+# Instalar con:  pip install -r requirements.txt
+# ============================================================
+
+# --- Framework principal ---
+Django==6.0.7
+
+# --- Interfaz: Tailwind CSS integrado a Django ---
+# Instala tambien pytailwindcss, que descarga el compilador
+# standalone de Tailwind (no requiere Node.js).
+django-tailwind==4.5.0
+
+# --- Archivos estaticos en produccion ---
+# Necesario porque con DEBUG=False Django deja de servir
+# los archivos estaticos por su cuenta.
+whitenoise==6.12.0
+
+# --- Conector MySQL (fase 2 / despliegue) ---
+# PyMySQL no necesita compilarse, por eso funciona en Windows
+# con Python 3.14 y en el servidor sin problemas.
+# El puente que lo hace pasar por mysqlclient ya esta configurado
+# en bookspace_manager/__init__.py
+PyMySQL==1.2.0
+
+# --- API REST (consumida por la app movil y el frontend) ---
+djangorestframework==3.18.0
+
+# --- CORS: permite que el frontend (GitHub Pages) consuma la API ---
+django-cors-headers==4.9.0
