@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block titulo %}Clientes | Raccoon Café{% endblock %}
+{% block encabezado %}Clientes{% endblock %}
+{% block subtitulo %}Personas y empresas registradas en el coworking{% endblock %}
+
+{% block contenido %}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <form method="get" class="flex gap-2">
+    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Nombre, cedula o correo"
+           class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-200">
+    <button type="submit" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 transition hover:border-marca-400 hover:text-marca-700">Buscar</button>
+  </form>
+  <a href="{% url 'clientes:crear' %}" class="rounded-lg bg-marca-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-marca-700">Nuevo cliente</a>
+</div>
+
+{% if clientes %}
+<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <div class="tabla-scroll">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+        <tr>
+          <th class="px-5 py-3">Cedula</th>
+          <th class="px-5 py-3">Cliente</th>
+          <th class="px-5 py-3">Contacto</th>
+          <th class="px-5 py-3">Tipo</th>
+          <th class="px-5 py-3 text-right">Reservas</th>
+          <th class="px-5 py-3">Estado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for cliente in clientes %}
+        <tr class="transition hover:bg-slate-50">
+          <td class="px-5 py-3 font-mono text-xs text-slate-600">{{ cliente.cedula }}</td>
+          <td class="px-5 py-3">
+            <p class="font-medium text-tinta-900">{{ cliente.nombre_completo }}</p>
+            {% if cliente.empresa %}<p class="text-xs text-slate-500">{{ cliente.empresa }}</p>{% endif %}
+          </td>
+          <td class="px-5 py-3 text-slate-500">
+            <p>{{ cliente.correo }}</p>
+            <p class="text-xs">{{ cliente.telefono }}</p>
+          </td>
+          <td class="px-5 py-3 text-slate-600">{{ cliente.get_tipo_cliente_display }}</td>
+          <td class="px-5 py-3 text-right font-medium text-tinta-900">{{ cliente.total_reservas }}</td>
+          <td class="px-5 py-3">
+            <span class="rounded-full px-2.5 py-1 text-xs font-medium {% if cliente.activo %}bg-marca-50 text-marca-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+              {{ cliente.activo|yesno:"Activo,Inactivo" }}
+            </span>
+          </td>
+          <td class="px-5 py-3 text-right whitespace-nowrap">
+            <a href="{% url 'clientes:detalle' cliente.pk %}" class="text-sm text-slate-500 hover:text-marca-700">Ver</a>
+            <a href="{% url 'clientes:editar' cliente.pk %}" class="ml-3 text-sm text-slate-500 hover:text-marca-700">Editar</a>
+            <a href="{% url 'clientes:eliminar' cliente.pk %}" class="ml-3 text-sm text-rose-500 hover:text-rose-700">Eliminar</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_paginacion.html" %}
+{% else %}
+  {% include "partials/_sin_datos.html" with titulo_vacio="No hay clientes registrados" texto_vacio="Registra un cliente para poder crear reservas." %}
+{% endif %}
+{% endblock %}
